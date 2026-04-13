@@ -18,13 +18,15 @@ const businessSchema = new Schema(
       required: true,
     },
     location: { type: String, required: true },
+    /** Cuisine, services offered, vibe — used in search and Telegram agent preferences. */
+    description: { type: String, default: "" },
     contactInfo: { type: String, default: "" },
     hours: { type: [businessHoursSchema], default: [] },
   },
   { timestamps: true }
 );
 
-businessSchema.index({ type: 1, location: "text", name: "text" });
+businessSchema.index({ type: 1, name: "text", location: "text", description: "text" });
 
 export type BusinessDoc = InferSchemaType<typeof businessSchema> & {
   _id: mongoose.Types.ObjectId;

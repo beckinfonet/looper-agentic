@@ -30,6 +30,10 @@ function internalKeyOk(req: { headers: Record<string, unknown> }): boolean {
   return req.headers["x-internal-key"] === config.agentInternalKey;
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function requireUser(req: { headers: Record<string, unknown> }): Promise<string> {
   const t = getBearerToken(req as Parameters<typeof getBearerToken>[0]);
   if (!t) {
@@ -239,9 +243,11 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     const filter: Record<string, unknown> = {};
     if (q.type) filter.type = q.type;
     if (q.location) {
+      const safe = escapeRegExp(q.location);
       filter.$or = [
-        { location: new RegExp(q.location, "i") },
-        { name: new RegExp(q.location, "i") },
+        { location: new RegExp(safe, "i") },
+        { name: new RegExp(safe, "i") },
+        { description: new RegExp(safe, "i") },
       ];
     }
     const rows = await Business.find(filter).limit(50).lean();
@@ -250,6 +256,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       name: b.name,
       type: b.type,
       location: b.location,
+      description: b.description ?? "",
       contactInfo: b.contactInfo,
     }));
   });
@@ -262,6 +269,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       name: b.name,
       type: b.type,
       location: b.location,
+      description: b.description ?? "",
       contactInfo: b.contactInfo,
       hours: b.hours ?? [],
     });
@@ -686,27 +694,52 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 
     const filter: Record<string, unknown> = {};
     if (body.type) filter.type = body.type;
-    if (body.location) {
+    const locTrim = body.location?.trim() ?? "";
+    if (locTrim) {
+      const safe = escapeRegExp(locTrim);
       filter.$or = [
-        { location: new RegExp(body.location, "i") },
-        { name: new RegExp(body.location, "i") },
+        { location: new RegExp(safe, "i") },
+        { name: new RegExp(safe, "i") },
+        { description: new RegExp(safe, "i") },
       ];
     }
     let rows = await Business.find(filter).limit(50).lean();
     if (body.preferences?.length) {
       const prefs = body.preferences.map((p) => p.toLowerCase());
       rows = rows.filter((r) =>
-        prefs.some((p) => r.name.toLowerCase().includes(p) || r.location.toLowerCase().includes(p))
+        prefs.some(
+          (p) =>
+            r.name.toLowerCase().includes(p) ||
+            r.location.toLowerCase().includes(p) ||
+            (r.description && r.description.toLowerCase().includes(p)),
+        ),
       );
     }
-    return reply.send(
-      rows.map((b) => ({
-        id: String(b._id),
-        name: b.name,
-        type: b.type,
-        location: b.location,
-      }))
-    );
+
+    const hasStrictExtras = Boolean(locTrim) || Boolean(body.preferences?.length);
+    let note: string | undefined;
+    if (rows.length === 0 && hasStrictExtras) {
+      const relaxed: Record<string, unknown> = {};
+      if (body.type) relaxed.type = body.type;
+      const fallback = await Business.find(relaxed).limit(50).lean();
+      if (fallback.length > 0) {
+        rows = fallback;
+        note =
+          "No row matched that city/keywords in name or location (data may only list areas like “Downtown”). " +
+          "These businesses still exist in the app—offer one by name and location.";
+      }
+    }
+
+    const businesses = rows.map((b) => ({
+      id: String(b._id),
+      name: b.name,
+      type: b.type,
+      location: b.location,
+      description: b.description ?? "",
+    }));
+    return note
+      ? reply.send({ businesses, note })
+      : reply.send({ businesses });
   });
 
   app.post("/v1/agent/get-availability", async (req, reply) => {

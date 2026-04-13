@@ -40,9 +40,13 @@ npm run dev:api
 
 ### Seed (optional)
 
+Inserts several realistic businesses (restaurants, spas, barbershops) across the Bay Area and Brooklyn, each with services and sample availability for tomorrow. Re-running removes prior seed rows (`contactInfo` ending in `@seed.looper.dev`) and legacy **Demo Bistro**.
+
 ```bash
 npm run seed -w @looper/api
 ```
+
+Dashboard login after seed: **`owner+kinjo@seed.looper.dev`** / **`password123`** (Kinjo Ramen). Demo customer phone: **`+10000000000`**.
 
 ### Dashboard
 
