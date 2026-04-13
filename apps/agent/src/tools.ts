@@ -2,82 +2,125 @@ import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { apiGet, apiPost } from "./apiClient.js";
 
-const businessType = z.preprocess((v) => {
+type SearchInput = {
+  type?: "restaurant" | "spa" | "barbershop";
+  location?: string;
+  preferences?: string[];
+};
+
+function normalizeSearchBody(raw: Record<string, unknown>): SearchInput {
+  let type: SearchInput["type"];
+  const rawType = raw.type;
+  if (typeof rawType === "string") {
+    const t = rawType.trim().toLowerCase();
+    type = t === "restaurant" || t === "spa" || t === "barbershop" ? t : undefined;
+  } else {
+    type = undefined;
+  }
+
+  let location: string | undefined;
+  if (typeof raw.location === "string" && raw.location.trim()) {
+    location = raw.location.trim();
+  }
+
+  let preferences: string[] | undefined;
+  const p = raw.preferences;
+  if (Array.isArray(p)) {
+    preferences = p.map(String).filter(Boolean);
+  } else if (typeof p === "string" && p.trim()) {
+    preferences = [p.trim()];
+  }
+
+  const out: SearchInput = {};
+  if (type) out.type = type;
+  if (location) out.location = location;
+  if (preferences?.length) out.preferences = preferences;
+  return out;
+}
+
+function stripEmptyOptionalString(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  return s.length ? s : undefined;
+}
+
+function toOptionalPartySize(v: unknown): number | undefined {
   if (v == null || v === "") return undefined;
-  if (typeof v !== "string") return undefined;
-  const t = v.trim().toLowerCase();
-  if (t === "restaurant" || t === "spa" || t === "barbershop") return t;
+  if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
+  if (typeof v === "string") {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
   return undefined;
-}, z.enum(["restaurant", "spa", "barbershop"]).optional());
-
-/** Models often send one string instead of string[] for preferences. */
-const preferencesList = z.preprocess((v) => {
-  if (v == null || v === "") return undefined;
-  if (Array.isArray(v)) return v.map(String);
-  return [String(v)];
-}, z.array(z.string()).optional());
-
-const optionalNonEmptyString = z.preprocess(
-  (v) => (v === "" || v === null ? undefined : v),
-  z.string().optional(),
-);
+}
 
 export function buildTools(ctx: { getUserId: () => string | undefined }) {
   return [
     new DynamicStructuredTool({
       name: "searchBusinesses",
       description:
-        "List or search businesses. Response JSON has `businesses` (array). If `note` is present, no exact location/keyword match—still show those businesses. Omit `type` for any category. Only pass `location` if the user names a place that might appear in stored `location` or business `name` (not every city exists in seed data).",
+        "List or search businesses. Response has businesses (array) and optional note. Omit type to search all categories. preferences must be an array of strings (e.g. [\"Japanese\"]) or omit it.",
       schema: z.object({
-        type: businessType.describe("Leave unset to return all businesses in the database."),
-        location: z.preprocess(
-          (v) => (v == null || v === "" ? undefined : String(v).trim()),
-          z.string().optional(),
-        ),
-        preferences: preferencesList,
+        type: z.enum(["restaurant", "spa", "barbershop"]).optional(),
+        location: z.string().optional(),
+        preferences: z.union([z.array(z.string()), z.string()]).optional(),
       }),
       func: async (input) => {
+        const raw = { ...input } as Record<string, unknown>;
+        if (typeof raw.preferences === "string") raw.preferences = [raw.preferences];
+        const body = normalizeSearchBody(raw);
         const r = await apiPost<{ businesses: unknown[]; note?: string }>(
           "/v1/agent/search-businesses",
-          input,
+          body,
         );
         return JSON.stringify(r);
       },
     }),
     new DynamicStructuredTool({
       name: "getAvailability",
-      description: "Get available time slots for a business on a date (YYYY-MM-DD).",
+      description:
+        "Get available time slots for a business on a date. date must be YYYY-MM-DD. businessId is the id string from searchBusinesses.",
       schema: z.object({
-        businessId: z.coerce.string(),
-        date: z.coerce.string(),
-        serviceId: optionalNonEmptyString,
-        specialistId: optionalNonEmptyString,
+        businessId: z.string().describe("Business id from search results"),
+        date: z.string().describe("YYYY-MM-DD"),
+        serviceId: z.string().optional().describe("Optional service id"),
+        specialistId: z.string().optional().describe("Optional specialist id"),
       }),
       func: async (input) => {
-        const r = await apiPost<unknown>("/v1/agent/get-availability", input);
+        const body = {
+          businessId: String(input.businessId ?? "").trim(),
+          date: String(input.date ?? "").trim(),
+          serviceId: stripEmptyOptionalString(input.serviceId),
+          specialistId: stripEmptyOptionalString(input.specialistId),
+        };
+        const r = await apiPost<unknown>("/v1/agent/get-availability", body);
         return JSON.stringify(r);
       },
     }),
     new DynamicStructuredTool({
       name: "createBooking",
-      description: "Create a booking for the current user. Requires businessId, serviceId, ISO time string, optional specialistId and partySize.",
+      description:
+        "Create a booking for the current user. time must be an exact ISO slot string from getAvailability. partySize is optional (default 1).",
       schema: z.object({
-        businessId: z.coerce.string(),
-        serviceId: z.coerce.string(),
-        time: z.coerce.string(),
-        specialistId: z.preprocess(
-          (v) => (v === "" || v === null || v === undefined ? undefined : v),
-          z.string().optional(),
-        ),
-        partySize: z.preprocess(
-          (v) => (v === "" || v === null || v === undefined ? undefined : v),
-          z.coerce.number().int().min(1).max(50).optional(),
-        ),
+        businessId: z.string(),
+        serviceId: z.string(),
+        time: z.string(),
+        specialistId: z.string().optional(),
+        partySize: z.union([z.number(), z.string()]).optional(),
       }),
       func: async (input) => {
         const userId = ctx.getUserId();
         if (!userId) return JSON.stringify({ error: "User not linked yet; ask for phone number." });
-        const r = await apiPost<unknown>("/v1/agent/create-booking", { ...input, userId });
+        const partySize = toOptionalPartySize(input.partySize) ?? 1;
+        const body = {
+          businessId: String(input.businessId ?? "").trim(),
+          serviceId: String(input.serviceId ?? "").trim(),
+          time: String(input.time ?? "").trim(),
+          specialistId: stripEmptyOptionalString(input.specialistId) ?? null,
+          partySize: partySize >= 1 && partySize <= 50 ? partySize : 1,
+          userId,
+        };
+        const r = await apiPost<unknown>("/v1/agent/create-booking", body);
         return JSON.stringify(r);
       },
     }),
@@ -85,32 +128,37 @@ export function buildTools(ctx: { getUserId: () => string | undefined }) {
       name: "modifyBooking",
       description: "Modify an existing booking time or specialist.",
       schema: z.object({
-        bookingId: z.coerce.string(),
-        newTime: optionalNonEmptyString,
-        newSpecialistId: z.preprocess(
-          (v) => (v === "" || v === null || v === undefined ? undefined : v),
-          z.string().optional(),
-        ),
+        bookingId: z.string(),
+        newTime: z.string().optional(),
+        newSpecialistId: z.string().optional(),
       }),
       func: async (input) => {
-        const r = await apiPost<unknown>("/v1/agent/modify-booking", input);
+        const body = {
+          bookingId: String(input.bookingId ?? "").trim(),
+          newTime: stripEmptyOptionalString(input.newTime),
+          newSpecialistId: stripEmptyOptionalString(input.newSpecialistId) ?? null,
+        };
+        const r = await apiPost<unknown>("/v1/agent/modify-booking", body);
         return JSON.stringify(r);
       },
     }),
     new DynamicStructuredTool({
       name: "cancelBooking",
       description: "Cancel a booking by id.",
-      schema: z.object({ bookingId: z.coerce.string() }),
+      schema: z.object({ bookingId: z.string() }),
       func: async (input) => {
-        const r = await apiPost<unknown>("/v1/agent/cancel-booking", input);
+        const r = await apiPost<unknown>("/v1/agent/cancel-booking", {
+          bookingId: String(input.bookingId ?? "").trim(),
+        });
         return JSON.stringify(r);
       },
     }),
     new DynamicStructuredTool({
       name: "listUserBookings",
       description: "List bookings for the current user (upcoming and past).",
-      // Empty strict objects often fail model binding; passthrough accepts {} or stray keys.
-      schema: z.object({}).passthrough(),
+      schema: z.object({
+        includePast: z.boolean().optional().describe("Optional; may be omitted."),
+      }),
       func: async () => {
         const userId = ctx.getUserId();
         if (!userId) return JSON.stringify({ error: "User not linked" });
