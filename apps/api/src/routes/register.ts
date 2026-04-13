@@ -677,20 +677,22 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     if (!internalKeyOk(req)) return reply.status(401).send({ error: "Unauthorized" });
     const body = z
       .object({
-        type: z.enum(["restaurant", "spa", "barbershop"]),
+        /** Omit to search all types (matches mobile GET /v1/businesses with no query). */
+        type: z.enum(["restaurant", "spa", "barbershop"]).nullish(),
         location: z.string().optional(),
         preferences: z.array(z.string()).optional(),
       })
       .parse((req as { body: unknown }).body);
 
-    const filter: Record<string, unknown> = { type: body.type };
+    const filter: Record<string, unknown> = {};
+    if (body.type) filter.type = body.type;
     if (body.location) {
       filter.$or = [
         { location: new RegExp(body.location, "i") },
         { name: new RegExp(body.location, "i") },
       ];
     }
-    let rows = await Business.find(filter).limit(20).lean();
+    let rows = await Business.find(filter).limit(50).lean();
     if (body.preferences?.length) {
       const prefs = body.preferences.map((p) => p.toLowerCase());
       rows = rows.filter((r) =>

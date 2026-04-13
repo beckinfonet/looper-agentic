@@ -27,6 +27,13 @@ function getSession(key: string): Session {
   return s;
 }
 
+/** E.164-style: strip to digits, 8–15 digits, single leading + (matches app registration). */
+function toE164(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) return null;
+  return `+${digits}`;
+}
+
 async function persistMessage(
   userId: string,
   role: "user" | "assistant",
@@ -54,7 +61,10 @@ async function resolveTelegramUser(telegramId: string): Promise<string | undefin
 }
 
 async function linkFromContact(telegramId: string, phone: string, name: string): Promise<string> {
-  const norm = phone.startsWith("+") ? phone : `+${phone.replace(/\D/g, "")}`;
+  const norm = toE164(phone);
+  if (!norm) {
+    throw new Error("Phone must be 8–15 digits (include country code, e.g. 1 for US).");
+  }
   const r = await apiPost<{ userId: string }>("/v1/users/link-phone", {
     telegramId,
     phoneNumber: norm,
@@ -91,6 +101,7 @@ async function runAgent(text: string, session: Session): Promise<string> {
 
   const system = `You are Looper, a concise booking assistant for restaurants, spas, and barbershops.
 You call backend tools to search businesses, read availability, create/modify/cancel bookings, and list the user's bookings.
+When the user asks what is available, to list businesses, or to book without naming a category, call searchBusinesses and omit the type field so all businesses are returned; only set type if they ask specifically for restaurants, spas, or barbershops.
 Always use ISO-8601 times that match getAvailability slot strings when booking.
 If the user is vague, ask one short clarifying question.
 If userId is not linked yet, ask them to share their phone contact using the keyboard.
@@ -212,23 +223,26 @@ async function main() {
     }
 
     if (!session.userId) {
-      const digits = msg.text.replace(/[^\d+]/g, "");
-      if (digits.length >= 8) {
+      const norm = toE164(msg.text.trim());
+      if (norm) {
         try {
           const name =
             [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || "Customer";
-          session.userId = await linkFromContact(tid, digits, name);
+          session.userId = await linkFromContact(tid, norm, name);
           await bot.sendMessage(chatId, "Phone saved. What would you like to book?");
-        } catch {
+        } catch (e) {
+          const err = (e as Error).message;
           await bot.sendMessage(
             chatId,
-            "Please share your contact using the button, or type a number with country code (e.g. +15551234567)."
+            `Could not link that number: ${err}\n\n` +
+              "Check the agent’s API_BASE_URL (public https) and AGENT_INTERNAL_KEY on Railway. " +
+              'Or use “Share phone number” or the app → Contact via Telegram.',
           );
         }
       } else {
         await bot.sendMessage(
           chatId,
-          "I need your phone number first to manage bookings. Tap /start to share your contact."
+          "I need your phone number first. Tap /start, then use “Share phone number”, or type a number with country code (e.g. +19175551234 — digits only, 8–15 after +).",
         );
       }
       return;

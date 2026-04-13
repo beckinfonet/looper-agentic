@@ -122,7 +122,7 @@ Add a **second service** in the same Railway project, same repo:
 
   | Variable | Value |
   |----------|--------|
-  | `API_BASE_URL` | `https://YOUR-RAILWAY-API-URL` (no trailing slash) |
+  | `API_BASE_URL` | Public API URL, **no trailing slash** (`https://…` or host only — `https://` is added if missing). Must **not** be `localhost`; use the same domain as the mobile app’s production API. |
   | `AGENT_INTERNAL_KEY` | **Same** as on the API service |
   | `TELEGRAM_BOT_TOKEN` | From BotFather |
   | `OPENAI_API_KEY` | Your key |
@@ -130,6 +130,8 @@ Add a **second service** in the same Railway project, same repo:
   | `TELEGRAM_BOT_USERNAME` | Without `@` |
 
 Long polling is fine; no webhook URL required for a first deployment.
+
+If the bot replies **“Could not link phone: fetch failed”**, the agent cannot reach `API_BASE_URL` (wrong URL, API down, or TLS). Confirm the API service has a **public** Railway domain and variables match the table above.
 
 ## 5. Dashboard on Railway
 

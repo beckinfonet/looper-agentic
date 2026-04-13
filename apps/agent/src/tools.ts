@@ -6,9 +6,13 @@ export function buildTools(ctx: { getUserId: () => string | undefined }) {
   return [
     new DynamicStructuredTool({
       name: "searchBusinesses",
-      description: "Search businesses by type and optional location or preferences.",
+      description:
+        "List or search businesses. Omit `type` when the user asks generally (any business) — required if the user only wants restaurants, spas, or barbershops.",
       schema: z.object({
-        type: z.enum(["restaurant", "spa", "barbershop"]),
+        type: z
+          .enum(["restaurant", "spa", "barbershop"])
+          .nullish()
+          .describe("Leave unset to return all businesses in the database."),
         location: z.string().optional(),
         preferences: z.array(z.string()).optional(),
       }),
