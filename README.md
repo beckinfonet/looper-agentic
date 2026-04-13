@@ -40,7 +40,7 @@ npm run dev:api
 
 ### Seed (optional)
 
-Inserts several realistic businesses (restaurants, spas, barbershops) across the Bay Area and Brooklyn, each with services and sample availability for tomorrow. Re-running removes prior seed rows (`contactInfo` ending in `@seed.looper.dev`) and legacy **Demo Bistro**.
+Inserts several realistic businesses (restaurants, spas, barbershops) across the Bay Area and Brooklyn, each with services and **the same sample slots for the next 7 UTC days** (so Telegram `getAvailabilityBulk` has data). Re-running removes prior seed rows (`contactInfo` ending in `@seed.looper.dev`) and legacy **Demo Bistro**.
 
 ```bash
 npm run seed -w @looper/api

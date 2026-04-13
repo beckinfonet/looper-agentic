@@ -59,7 +59,7 @@ export function buildTools(ctx: { getUserId: () => string | undefined }) {
     new DynamicStructuredTool({
       name: "searchBusinesses",
       description:
-        "List or search businesses. Response has businesses (array) and optional note. Omit type to search all categories. preferences must be an array of strings (e.g. [\"Japanese\"]) or omit it.",
+        "List or search businesses. Each business includes hours (array of {dayOfWeek 0=Sun..6=Sat, open, close}), description, location. Response has businesses array and optional note. preferences: array of strings or omit.",
       schema: z.object({
         type: z.enum(["restaurant", "spa", "barbershop"]).optional(),
         location: z.string().optional(),
@@ -94,6 +94,42 @@ export function buildTools(ctx: { getUserId: () => string | undefined }) {
           specialistId: stripEmptyOptionalString(input.specialistId),
         };
         const r = await apiPost<unknown>("/v1/agent/get-availability", body);
+        return JSON.stringify(r);
+      },
+    }),
+    new DynamicStructuredTool({
+      name: "getAvailabilityBulk",
+      description:
+        "Get bookable slots for several dates at once (YYYY-MM-DD each). Use when the user asks for availability beyond a single day or says 'any day'. Pass up to 14 dates (e.g. next 7 consecutive days).",
+      schema: z.object({
+        businessId: z.string(),
+        dates: z
+          .array(z.string())
+          .min(1)
+          .max(14)
+          .describe("List of dates YYYY-MM-DD"),
+        specialistId: z.string().optional(),
+      }),
+      func: async (input) => {
+        const body = {
+          businessId: String(input.businessId ?? "").trim(),
+          dates: (input.dates ?? []).map((d) => String(d).trim()).filter(Boolean),
+          specialistId: stripEmptyOptionalString(input.specialistId),
+        };
+        const r = await apiPost<unknown>("/v1/agent/get-availability-bulk", body);
+        return JSON.stringify(r);
+      },
+    }),
+    new DynamicStructuredTool({
+      name: "getBusinessDetails",
+      description:
+        "Fetch one business by id: hours, description, location, contactInfo. Use when the user asks for opening hours or full venue details.",
+      schema: z.object({
+        businessId: z.string().describe("Business id from searchBusinesses"),
+      }),
+      func: async (input) => {
+        const id = encodeURIComponent(String(input.businessId ?? "").trim());
+        const r = await apiGet<unknown>(`/v1/businesses/${id}`);
         return JSON.stringify(r);
       },
     }),

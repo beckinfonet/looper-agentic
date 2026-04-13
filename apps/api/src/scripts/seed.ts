@@ -204,12 +204,19 @@ async function main() {
   await BusinessUser.deleteMany({ email: "owner@demobistro.test" });
   await User.deleteMany({ phoneNumber: "+10000000000" });
 
-  const tomorrow = new Date();
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const ymd = tomorrow.toISOString().slice(0, 10);
-  const slotA = new Date(`${ymd}T18:00:00.000Z`).toISOString();
-  const slotB = new Date(`${ymd}T19:30:00.000Z`).toISOString();
-  const slotC = new Date(`${ymd}T20:00:00.000Z`).toISOString();
+  /** Next N calendar days in UTC (YYYY-MM-DD), starting tomorrow. */
+  const upcomingDates = (n: number): string[] => {
+    const out: string[] = [];
+    for (let i = 1; i <= n; i++) {
+      const d = new Date();
+      d.setUTCHours(0, 0, 0, 0);
+      d.setUTCDate(d.getUTCDate() + i);
+      out.push(d.toISOString().slice(0, 10));
+    }
+    return out;
+  };
+  const dates7 = upcomingDates(7);
+  const sampleYmd = dates7[0]!;
 
   const created: { name: string; id: string; services: string[] }[] = [];
   let ownerBusinessId: Types.ObjectId | null = null;
@@ -233,12 +240,17 @@ async function main() {
       });
       serviceIds.push(String(svc._id));
     }
-    await Availability.create({
-      businessId: b._id,
-      date: ymd,
-      slots: [slotA, slotB, slotC],
-      scopeKey: availabilityScopeKey(String(b._id), ymd, null),
-    });
+    for (const ymd of dates7) {
+      const slotA = new Date(`${ymd}T18:00:00.000Z`).toISOString();
+      const slotB = new Date(`${ymd}T19:30:00.000Z`).toISOString();
+      const slotC = new Date(`${ymd}T20:00:00.000Z`).toISOString();
+      await Availability.create({
+        businessId: b._id,
+        date: ymd,
+        slots: [slotA, slotB, slotC],
+        scopeKey: availabilityScopeKey(String(b._id), ymd, null),
+      });
+    }
     created.push({ name: def.name, id: String(b._id), services: serviceIds });
     if (def.dashboardOwner) ownerBusinessId = b._id;
   }
@@ -260,8 +272,8 @@ async function main() {
   // eslint-disable-next-line no-console
   console.log("Seed OK:", {
     businesses: created.length,
-    sampleDate: ymd,
-    slots: [slotA, slotB, slotC],
+    availabilityDatesUtc: dates7,
+    sampleDate: sampleYmd,
     dashboardLogin: { email: "owner+kinjo@seed.looper.dev", password: "password123" },
     customerPhone: "+10000000000",
     ids: created.map((c) => ({ name: c.name, businessId: c.id })),

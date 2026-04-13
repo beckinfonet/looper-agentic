@@ -736,6 +736,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       type: b.type,
       location: b.location,
       description: b.description ?? "",
+      hours: b.hours ?? [],
     }));
     return note
       ? reply.send({ businesses, note })
@@ -764,6 +765,27 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       date: body.date,
       slots: av?.slots ?? [],
     });
+  });
+
+  app.post("/v1/agent/get-availability-bulk", async (req, reply) => {
+    if (!internalKeyOk(req)) return reply.status(401).send({ error: "Unauthorized" });
+    const body = z
+      .object({
+        businessId: z.string(),
+        dates: z.array(z.string()).min(1).max(14),
+        specialistId: z.string().optional(),
+      })
+      .parse((req as { body: unknown }).body);
+
+    const spec = body.specialistId?.trim() ? body.specialistId.trim() : null;
+    const results = await Promise.all(
+      body.dates.map(async (date) => {
+        const key = availabilityScopeKey(body.businessId, date, spec);
+        const av = await Availability.findOne({ scopeKey: key }).lean();
+        return { date, slots: av?.slots ?? [] };
+      }),
+    );
+    return reply.send({ businessId: body.businessId, results });
   });
 
   app.post("/v1/agent/create-booking", async (req, reply) => {
