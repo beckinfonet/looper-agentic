@@ -1,6 +1,5 @@
 import "dotenv/config";
-import mongoose from "mongoose";
-import { config } from "../config.js";
+import { connectDb, disconnectDb } from "../db.js";
 import { Business } from "../models/Business.js";
 import { Service } from "../models/Service.js";
 import { Availability, availabilityScopeKey } from "../models/Availability.js";
@@ -9,7 +8,7 @@ import { BusinessUser } from "../models/BusinessUser.js";
 import bcrypt from "bcryptjs";
 
 async function main() {
-  await mongoose.connect(config.mongoUri);
+  await connectDb();
 
   const existing = await Business.findOne({ name: "Demo Bistro" });
   if (existing) {
@@ -74,7 +73,7 @@ async function main() {
     customerPhone: "+10000000000",
   });
 
-  await mongoose.disconnect();
+  await disconnectDb();
 }
 
 main().catch((e) => {

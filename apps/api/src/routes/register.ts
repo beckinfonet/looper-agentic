@@ -76,7 +76,41 @@ async function bookingToDto(b: InstanceType<typeof Booking>) {
 }
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", async () => ({ ok: true }));
+  app.get("/health", async () => {
+    const conn = mongoose.connection;
+    const mongoReady = conn.readyState === 1;
+    const databaseName = conn.db?.databaseName ?? null;
+    let businessModelEstimatedCount: number | null = null;
+    let businessesCollectionEstimatedCount: number | null = null;
+    if (mongoReady && conn.db) {
+      try {
+        businessModelEstimatedCount = await Business.estimatedDocumentCount();
+      } catch {
+        businessModelEstimatedCount = null;
+      }
+      try {
+        businessesCollectionEstimatedCount = await conn.db
+          .collection("businesses")
+          .estimatedDocumentCount();
+      } catch {
+        businessesCollectionEstimatedCount = null;
+      }
+    }
+    return {
+      ok: true,
+      mongo: {
+        ready: mongoReady,
+        /** Active DB on this connection (should be `looper` in prod). */
+        databaseName,
+        /** From env; if set but databaseName differs, deployment may be old code. */
+        configuredDbName: config.mongoDbName ?? null,
+        businessModelCollection: Business.collection.name,
+        businessModelEstimatedCount,
+        /** Raw `businesses` collection in the active DB (for collection-name mismatches). */
+        businessesCollectionEstimatedCount,
+      },
+    };
+  });
 
   app.post(
     "/v1/users/register",

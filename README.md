@@ -92,6 +92,7 @@ See **[docs/RAILWAY.md](docs/RAILWAY.md)** for step-by-step Railway setup, env v
 | Issue | What to check |
 |-------|----------------|
 | Mongo connection | `MONGODB_URI`, Atlas network access |
+| **`GET /v1/businesses` returns `[]` but Compass shows rows** | 1) **Redeploy `@looper/api`** after pulling code that reads `MONGODB_DB_NAME` — the env var alone does nothing on an older build. 2) `GET /health` → `mongo.databaseName` should be `looper`; if it is `test`, fix URI (`/looper` before `?`) or set `MONGODB_DB_NAME=looper` and redeploy. 3) If `businessesCollectionEstimatedCount` is `0`, documents are not in `looper.businesses` (wrong DB/collection or Compass showed a different cluster). |
 | Agent 401 | Same `AGENT_INTERNAL_KEY` in API and agent `.env` |
 | Dashboard CORS | `CORS_ORIGIN` in `apps/api/.env` |
 | Mobile “network failed” | API running; mobile `config.ts` URL for sim vs device |

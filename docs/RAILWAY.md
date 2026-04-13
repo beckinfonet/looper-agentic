@@ -12,6 +12,30 @@ You keep **MongoDB on Atlas** (already `mongodb+srv://...`). Railway only runs *
 | **Agent** (`apps/agent`) | Optional — Telegram bot (long polling works on Railway) |
 | **Dashboard** | Optional — see [Dashboard on Railway](#dashboard-on-railway) |
 
+## Railway imported three services (`@looper/api`, `@looper/agent`, `@looper/dashboard`)
+
+Railway often creates **one deployment per npm workspace**. That is expected. Configure **each** service like below (or remove the ones you do not need).
+
+**For every service:**
+
+1. Open the service → **Settings**.
+2. Set **Root Directory** to **`looper-agentic`** if your Git repo root is **`LooperProject`** (so Railway runs commands from the monorepo folder). If the connected repo **is** only `looper-agentic`, leave root directory **empty** or `.`.
+3. Under **Deploy** → **Custom Build Command** / **Custom Start Command** (names vary slightly), paste the commands from the table.
+4. Add **Variables** for that service (see sections below).
+5. **Remove** any auto-detected start command that only runs `npm start` at the package root without `-w @looper/...` — the monorepo root has no single `start`.
+
+| Railway service name | Custom build command | Custom start command |
+|----------------------|----------------------|----------------------|
+| **`@looper/api`** | `npm install && npm run build -w @looper/shared && npm run build -w @looper/api` | `npm run start -w @looper/api` |
+| **`@looper/agent`** | `npm install && npm run build -w @looper/agent` | `npm run start -w @looper/agent` |
+| **`@looper/dashboard`** | `npm install && npm run build -w @looper/dashboard` | `sh -c 'npx --yes serve@14 apps/dashboard/dist -s -l tcp://0.0.0.0:$PORT'` |
+
+**Simplest setup for mobile-only testing:** keep **`@looper/api`**, set its commands and env vars, **generate a domain**, then **delete** or **pause** the `@looper/agent` and `@looper/dashboard` services until you need them. That clears the “settings” warnings on unused apps.
+
+After editing build/start, click **Apply changes** / **Deploy** so Railway rebuilds.
+
+---
+
 ## 1. Prepare the repo
 
 - Push **`LooperProject`** (or at least **`looper-agentic`**) to GitHub/GitLab if Railway should deploy from git.
@@ -42,7 +66,8 @@ You keep **MongoDB on Atlas** (already `mongodb+srv://...`). Railway only runs *
 
    | Variable | Notes |
    |----------|--------|
-   | `MONGODB_URI` | Your Atlas URI (include `/looper` or DB name before `?`) |
+   | `MONGODB_URI` | Your Atlas URI; include **`/looper`** before `?`, **or** set `MONGODB_DB_NAME` below |
+   | `MONGODB_DB_NAME` | Optional but recommended if URI is like `...net/?retryWrites=...` — set to **`looper`** so the API reads `looper.businesses` |
    | `JWT_SECRET` | Long random string (signing tokens) |
    | `AGENT_INTERNAL_KEY` | Long random string (agent + internal routes); **save it** for the agent service |
    | `CORS_ORIGIN` | `*` for quick tests, or your dashboard URL(s), comma-separated |
