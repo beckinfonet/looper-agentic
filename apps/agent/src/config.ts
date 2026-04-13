@@ -12,5 +12,5 @@ export const config = {
   telegramToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   openaiKey: process.env.OPENAI_API_KEY ?? "",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-  telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "YourBot",
+  telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "looper_ai_bot",
 };
