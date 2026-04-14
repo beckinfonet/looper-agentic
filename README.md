@@ -6,6 +6,17 @@ The customer **React Native** app lives next to this repo: **[`../LooperMobile`]
 
 **Roadmap / status:** [docs/PRODUCT_STATUS.md](docs/PRODUCT_STATUS.md) — vision, shipped vs pending, open decisions.
 
+## Authentication (MVP)
+
+There is **no external identity provider** in this repo today: `apps/api` signs **JWTs** with **`JWT_SECRET`** (set in `apps/api/.env`).
+
+| Audience | Endpoints | Notes |
+| -------- | ----------- | ----- |
+| **Customers** (LooperMobile) | `POST /v1/users/register` | Phone + name; creates or updates user by phone; returns user JWT (**30d**). No separate `users/login`. |
+| **Business owners** (dashboard + LooperMobile) | `POST /v1/business-auth/register`, `POST /v1/business-auth/login` | Email + password (`BusinessUser` + bcrypt); returns business JWT (**7d**). |
+
+**Planned:** **Firebase** as hosted identity — verify ID tokens on the API / map to `User` and `BusinessUser` when that phase is implemented. Details: [docs/PRODUCT_STATUS.md](docs/PRODUCT_STATUS.md) (*Current state → Authentication*, *Open decisions* #7).
+
 ## Layout
 
 | Path              | Description                                                                               |

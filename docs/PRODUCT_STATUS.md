@@ -16,16 +16,16 @@ Single place for **vision**, **what shipped**, **what’s next**, and **open inp
 
 ## Vision (agreed direction)
 
-| Area | Direction |
-|------|-----------|
-| **Clients** | One API + one DB; **mobile first**; web/dashboard gains **more options later**. |
-| **Channels** | **Mobile + Telegram** now; **WhatsApp** after Meta approval. |
-| **Scheduling** | **15-minute** grid; tables/rooms **not** blocked for arbitrary full service length; **~2h default turn** (configurable later); bot can clarify **exact time** with the customer. |
-| **Staff** | If the business maintains technician schedules → customer can **choose** a technician; else **“any available”**. |
-| **Timezone** | **Business location → business timezone** (needs explicit **IANA** `Europe/Paris`, etc.—raw address string is not enough for math). |
+| Area                              | Direction                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Clients**                       | One API + one DB; **mobile first**; web/dashboard gains **more options later**.                                                                                                                                                                                                                                                                    |
+| **Channels**                      | **Mobile + Telegram** now; **WhatsApp** after Meta approval.                                                                                                                                                                                                                                                                                       |
+| **Scheduling**                    | **15-minute** grid; tables/rooms **not** blocked for arbitrary full service length; **~2h default turn** (configurable later); bot can clarify **exact time** with the customer.                                                                                                                                                                   |
+| **Staff**                         | If the business maintains technician schedules → customer can **choose** a technician; else **“any available”**.                                                                                                                                                                                                                                   |
+| **Timezone**                      | **Business location → business timezone** (needs explicit **IANA** `Europe/Paris`, etc.—raw address string is not enough for math).                                                                                                                                                                                                                |
 | **Owner data (by business type)** | **Gather as much relevant, structured information as the vertical allows** — requirements differ by type (restaurant vs spa vs clinic, etc.). Rich, accurate owner-supplied data **helps customers compare and book confidently** and **keeps the chatbot from stalling** (fewer unknowns; less guessing; answers come from tools, not invention). |
-| **Bot** | Answer as much as possible from **data exposed via API/tools** (structured first; richer text/RAG later if needed). Same contract: if owners did not supply it, the bot should say so or offer booking/search—not fabricate. |
-| **Payments** | **Stripe** + optional **prepay** later. **Product:** **confirmations**, **T−24h / T−1h reminders**, **customer → business ping** — **delivery** of reminders/ping follows **Phase 3** after owner MVP + worker (see build order above). |
+| **Bot**                           | Answer as much as possible from **data exposed via API/tools** (structured first; richer text/RAG later if needed). Same contract: if owners did not supply it, the bot should say so or offer booking/search—not fabricate.                                                                                                                       |
+| **Payments**                      | **Stripe** + optional **prepay** later. **Product:** **confirmations**, **T−24h / T−1h reminders**, **customer → business ping** — **delivery** of reminders/ping follows **Phase 3** after owner MVP + worker (see build order above).                                                                                                            |
 
 ---
 
@@ -38,8 +38,15 @@ Single place for **vision**, **what shipped**, **what’s next**, and **open inp
 
 ### Business owners
 
-- **Dashboard** (not mobile): business auth (`/v1/business-auth/*`), profile, **services**, **specialists**, **availability** (PUT = explicit **slot** list per date / optional specialist scope), booking inbox.
-- **LooperMobile:** **no** business signup or owner tooling yet.
+- **Dashboard:** business auth (`/v1/business-auth/*`), profile, **services**, **specialists**, **availability** (PUT = explicit **slot** list per date / optional specialist scope), booking inbox.
+- **LooperMobile:** business **register / login** against the same API (`/v1/business-auth/register`, `/v1/business-auth/login`); JWT stored separately from the customer token. **OwnerHome** and related screens are a **partial** step toward the full owner MVP (parity with dashboard owner tools is still Phase 1).
+
+### Authentication (MVP)
+
+- **No external identity provider** — the API issues **JWTs** signed with **`JWT_SECRET`** (`apps/api/.env`); clients send `Authorization: Bearer <token>`.
+- **Customers:** `POST /v1/users/register` with phone + name (creates or updates user by phone; **no separate login route** — MVP “sign-in” is the same call). Access token payload `typ: user` (**30d** expiry in API code).
+- **Business owners:** `POST /v1/business-auth/register` (creates `Business` + `BusinessUser`, bcrypt password hash) and `POST /v1/business-auth/login`. Access token payload `typ: business` + `businessId` (**7d** expiry in API code).
+- **Planned:** **Firebase** as the hosted identity provider in a **later phase** (verify Firebase ID tokens on the API and/or align accounts); until then, first-party email/password + JWT is intentional MVP scope.
 
 ### Data & rules
 
@@ -66,7 +73,7 @@ Use git history for detail; high level:
 
 - [ ] **`Business.timezone`** (IANA) required in owner onboarding / settings; document how mobile collects it (picker vs inferred from address).
 - [ ] **Type-aware owner profile:** `Business` type/category drives **required + optional fields** (hours, policies, accessibility, deposit rules, what’s included in a service, etc.—scoped per vertical). Dashboard + **LooperMobile owner MVP** should **prompt completion** (not just a single free-text blurb). Persist structured fields; **expose them on public business detail and agent tools** so customers and the bot share one source of truth.
-- [ ] **LooperMobile:** business auth + owner screens mirroring dashboard capabilities (profile, services, specialists, availability)—**same REST API**.
+- [ ] **LooperMobile:** business auth + owner screens mirroring dashboard capabilities (profile, services, specialists, availability)—**same REST API**. *(Auth + early owner UI exist; full parity with dashboard is still open.)*
 - [ ] **Agent:** `listSpecialists` (or equivalent) + **`Business` flag** for staff choice (`required` / `optional` / `none`) and prompt updates; tool payloads include **type-specific attributes** once the API stores them.
 
 ### Phase 2 — Scheduling engine
@@ -102,6 +109,7 @@ Short answers here over time remove ambiguity for implementers.
 | 4 | **Timezone collection on mobile:** owner picks from IANA list only, or address + geocode fallback? | *Revisit when ready.* |
 | 5 | **Ping / ack:** does business need a **“confirmed on schedule”** boolean visible to customer? | *Revisit when ready.* |
 | 6 | **Per-type field matrix:** which **required vs optional** owner fields for each `Business` category (and validation rules)? | *Define incrementally; start with 1–2 verticals you care about first.* |
+| 7 | **Hosted identity (post-MVP):** move sign-in to **Firebase** (or keep hybrid)? | **Firebase** when implemented; today = first-party JWT + owner email/password + customer phone register. |
 
 ---
 
