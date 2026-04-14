@@ -1,0 +1,19 @@
+---
+description: Load Looper roadmap and status before product or cross-stack work
+alwaysApply: true
+---
+
+# Looper — project context (auto)
+
+When the task concerns **Looper** (roadmap, phases, product intent, **LooperMobile**, API, dashboard, Telegram agent, bookings, businesses, owners), and these files are **not** already in the conversation, **read them first** (use the read tool):
+
+1. **`Looper/progress/Status dashboard.md`** — vision, current state, done, next steps, blockers (Obsidian vault root `Looper` in the multi-root workspace).
+2. **`looper-agentic/docs/PRODUCT_STATUS.md`** — canonical checklist (same content as `Looper/progress/PRODUCT_STATUS.md` via symlink).
+
+**Rules of engagement from that doc:** honor **locked build order** (mobile owner MVP before reminders/ping; automated worker for reminders) and **Telegram-only** owner notifications for v1. Treat **`docs/PRODUCT_STATUS.md`** as the source of truth for shipped vs pending; update it when roadmap reality changes.
+
+If paths differ (single-folder open): from **looper-agentic** repo root use `docs/PRODUCT_STATUS.md`; from **LooperMobile** only, use `../LooperProject/Looper/progress/Status dashboard.md` and `../LooperProject/looper-agentic/docs/PRODUCT_STATUS.md` if those paths exist.
+
+**Skip** this prefetch when the user’s request is narrowly scoped and clearly unrelated (typo fix, one-line refactor, dependency version only).
+
+For run/setup only when needed: this repo’s `README.md`; mobile app: `LooperMobile/README.md` when that folder is in the workspace.
