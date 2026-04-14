@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [location, setLocation] = useState("");
+  const [timezone, setTimezone] = useState("America/New_York");
   const [type, setType] = useState<"restaurant" | "spa" | "barbershop">("restaurant");
   const [err, setErr] = useState<string | null>(null);
 
@@ -15,7 +16,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setErr(null);
     try {
-      const r = await api.register({ email, password, businessName, location, type });
+      const r = await api.register({ email, password, businessName, location, type, timezone });
       setToken(r.token);
       nav("/");
     } catch (e) {
@@ -37,6 +38,13 @@ export default function RegisterPage() {
         </select>
         <label>Location</label>
         <input value={location} onChange={(e) => setLocation(e.target.value)} required />
+        <label>Time zone (IANA)</label>
+        <input
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          placeholder="America/Los_Angeles"
+          required
+        />
         <label>Email</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
         <label>Password</label>

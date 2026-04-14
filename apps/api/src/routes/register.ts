@@ -25,6 +25,9 @@ import {
   modifyBooking,
 } from "../services/bookingService.js";
 import crypto from "node:crypto";
+import { isValidIanaTimeZone } from "../validation/timezone.js";
+
+const staffChoiceEnum = z.enum(["required", "optional", "none"]);
 
 function internalKeyOk(req: { headers: Record<string, unknown> }): boolean {
   return req.headers["x-internal-key"] === config.agentInternalKey;
@@ -272,6 +275,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       description: b.description ?? "",
       contactInfo: b.contactInfo,
       hours: b.hours ?? [],
+      timezone: b.timezone ?? "",
+      staffChoice: b.staffChoice ?? "optional",
     });
   });
 
@@ -458,8 +463,15 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         businessName: z.string().min(1),
         type: z.enum(["restaurant", "spa", "barbershop"]),
         location: z.string().min(1),
+        timezone: z.string().min(1),
+        description: z.string().max(8000).optional(),
+        staffChoice: staffChoiceEnum.optional(),
       })
       .parse(req.body);
+
+    if (!isValidIanaTimeZone(body.timezone)) {
+      return reply.status(400).send({ error: "Invalid IANA timezone" });
+    }
 
     const exists = await BusinessUser.findOne({ email: body.email });
     if (exists) return reply.status(409).send({ error: "Email in use" });
@@ -469,6 +481,9 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       type: body.type,
       location: body.location,
       contactInfo: body.email,
+      timezone: body.timezone.trim(),
+      description: body.description?.trim() ?? "",
+      staffChoice: body.staffChoice ?? "optional",
     });
     const passwordHash = await bcrypt.hash(body.password, 10);
     const bu = await BusinessUser.create({
@@ -516,8 +531,11 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       name: b.name,
       type: b.type,
       location: b.location,
+      description: b.description ?? "",
       contactInfo: b.contactInfo,
       hours: b.hours ?? [],
+      timezone: b.timezone ?? "",
+      staffChoice: b.staffChoice ?? "optional",
     });
   });
 
@@ -528,6 +546,9 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         name: z.string().optional(),
         location: z.string().optional(),
         contactInfo: z.string().optional(),
+        description: z.string().max(8000).optional(),
+        timezone: z.string().optional(),
+        staffChoice: staffChoiceEnum.optional(),
         hours: z
           .array(
             z.object({
@@ -543,9 +564,28 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     if (body.name !== undefined) patch.name = body.name;
     if (body.location !== undefined) patch.location = body.location;
     if (body.contactInfo !== undefined) patch.contactInfo = body.contactInfo;
+    if (body.description !== undefined) patch.description = body.description;
     if (body.hours !== undefined) patch.hours = body.hours;
+    if (body.staffChoice !== undefined) patch.staffChoice = body.staffChoice;
+    if (body.timezone !== undefined) {
+      if (!isValidIanaTimeZone(body.timezone)) {
+        return reply.status(400).send({ error: "Invalid IANA timezone" });
+      }
+      patch.timezone = body.timezone.trim();
+    }
     const b = await Business.findByIdAndUpdate(businessId, { $set: patch }, { new: true }).lean();
-    return reply.send(b);
+    if (!b) return reply.status(404).send({ error: "Not found" });
+    return reply.send({
+      id: String(b._id),
+      name: b.name,
+      type: b.type,
+      location: b.location,
+      description: b.description ?? "",
+      contactInfo: b.contactInfo,
+      hours: b.hours ?? [],
+      timezone: b.timezone ?? "",
+      staffChoice: b.staffChoice ?? "optional",
+    });
   });
 
   app.post("/v1/business/services", async (req, reply) => {
@@ -737,6 +777,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       location: b.location,
       description: b.description ?? "",
       hours: b.hours ?? [],
+      timezone: b.timezone ?? "",
+      staffChoice: b.staffChoice ?? "optional",
     }));
     return note
       ? reply.send({ businesses, note })

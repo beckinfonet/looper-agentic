@@ -20,6 +20,14 @@ const businessSchema = new Schema(
     location: { type: String, required: true },
     /** Cuisine, services offered, vibe — used in search and Telegram agent preferences. */
     description: { type: String, default: "" },
+    /** IANA zone, e.g. Europe/Paris — required for new businesses at registration. */
+    timezone: { type: String, default: "" },
+    /** Whether customers must pick a specialist, may pick one, or bookings are unassigned. */
+    staffChoice: {
+      type: String,
+      enum: ["required", "optional", "none"],
+      default: "optional",
+    },
     contactInfo: { type: String, default: "" },
     hours: { type: [businessHoursSchema], default: [] },
   },

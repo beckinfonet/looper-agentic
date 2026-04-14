@@ -4,14 +4,16 @@ Monorepo for the **Looper** platform backend: **REST API** (source of truth), **
 
 The customer **React Native** app lives next to this repo: **[`../LooperMobile`](../LooperMobile/)**.
 
+**Roadmap / status:** [docs/PRODUCT_STATUS.md](docs/PRODUCT_STATUS.md) — vision, shipped vs pending, open decisions.
+
 ## Layout
 
-| Path | Description |
-|------|-------------|
-| `apps/api` | Fastify + MongoDB (Mongoose): users, businesses, bookings, agent routes, link tokens |
-| `apps/dashboard` | Vite + React: business login, profile, services, specialists, availability, booking inbox |
-| `apps/agent` | Telegram bot + LangChain tool-calling; calls the API with `X-Internal-Key` |
-| `packages/shared` | Shared TypeScript types (minimal) |
+| Path              | Description                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `apps/api`        | Railway + MongoDB (Mongoose): users, businesses, bookings, agent routes, link tokens      |
+| `apps/dashboard`  | Vite + React: business login, profile, services, specialists, availability, booking inbox |
+| `apps/agent`      | Telegram bot + LangChain tool-calling; calls the API with `X-Internal-Key`                |
+| `packages/shared` | Shared TypeScript types (minimal)                                                         |
 
 ## Prerequisites
 
@@ -90,16 +92,6 @@ Telegram ──► Agent ──HTTP (tools)──► API
 ## Deploy to Railway (HTTPS API for real devices)
 
 See **[docs/RAILWAY.md](docs/RAILWAY.md)** for step-by-step Railway setup, env vars, and pointing **LooperMobile** at the public URL.
-
-## Troubleshooting
-
-| Issue | What to check |
-|-------|----------------|
-| Mongo connection | `MONGODB_URI`, Atlas network access |
-| **`GET /v1/businesses` returns `[]` but Compass shows rows** | 1) **Redeploy `@looper/api`** after pulling code that reads `MONGODB_DB_NAME` — the env var alone does nothing on an older build. 2) `GET /health` → `mongo.databaseName` should be `looper`; if it is `test`, fix URI (`/looper` before `?`) or set `MONGODB_DB_NAME=looper` and redeploy. 3) If `businessesCollectionEstimatedCount` is `0`, documents are not in `looper.businesses` (wrong DB/collection or Compass showed a different cluster). |
-| Agent 401 | Same `AGENT_INTERNAL_KEY` in API and agent `.env` |
-| Dashboard CORS | `CORS_ORIGIN` in `apps/api/.env` |
-| Mobile “network failed” | API running; mobile `config.ts` URL for sim vs device |
 
 ```bash
 npm run lint

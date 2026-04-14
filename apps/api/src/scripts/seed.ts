@@ -18,6 +18,8 @@ type SeedBusiness = {
   name: string;
   type: "restaurant" | "spa" | "barbershop";
   location: string;
+  /** IANA time zone for the venue. */
+  timezone: string;
   description: string;
   hours: Hour[];
   services: { name: string; durationMinutes: number; priceCents: number }[];
@@ -65,6 +67,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Kinjo Ramen",
     type: "restaurant",
     location: "Brooklyn, NY — Williamsburg",
+    timezone: "America/New_York",
     description:
       "Japanese ramen and small plates. Tonkotsu, shoyu, vegetarian miso broth. Sake and highballs.",
     hours: WEEK_LUNCH_DINNER,
@@ -79,6 +82,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Trattoria Lupa",
     type: "restaurant",
     location: "San Francisco, CA — North Beach",
+    timezone: "America/Los_Angeles",
     description:
       "Neighborhood Italian: handmade pasta, wood-fired pizza, antipasti. Wine list focused on Piedmont and Tuscany.",
     hours: WEEK_LUNCH_DINNER,
@@ -92,6 +96,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Casa Verde Taquería",
     type: "restaurant",
     location: "Milpitas, CA — McCarthy Ranch",
+    timezone: "America/Los_Angeles",
     description:
       "California-Mexican tacos, burritos, and aguas frescas. Carnitas and grilled fish daily.",
     hours: WEEK_LUNCH_DINNER,
@@ -105,6 +110,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "The Copper Skillet",
     type: "restaurant",
     location: "Oakland, CA — Downtown",
+    timezone: "America/Los_Angeles",
     description:
       "American brunch and dinner. Fried chicken, burgers, seasonal salads. Weekend jazz brunch.",
     hours: WEEK_LUNCH_DINNER,
@@ -118,6 +124,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Lemongrass Kitchen",
     type: "restaurant",
     location: "San Jose, CA — Rose Garden",
+    timezone: "America/Los_Angeles",
     description:
       "Thai curries, papaya salad, pad thai, and Isaan-style grilled meats. Vegan options marked on menu.",
     hours: WEEK_LUNCH_DINNER,
@@ -131,6 +138,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Harbor & Vine",
     type: "restaurant",
     location: "San Francisco, CA — Embarcadero",
+    timezone: "America/Los_Angeles",
     description:
       "Pacific seafood and natural wine. Oysters, crudo, whole grilled fish. Sunset views.",
     hours: WEEK_LUNCH_DINNER,
@@ -141,6 +149,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Stillwater Day Spa",
     type: "spa",
     location: "Palo Alto, CA — University Ave",
+    timezone: "America/Los_Angeles",
     description:
       "Massage (Swedish, deep tissue, hot stone), facials, and couples suites. Quiet lounge with tea service.",
     hours: SPA_HOURS,
@@ -154,6 +163,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Brooklyn Bodywork",
     type: "spa",
     location: "Brooklyn, NY — Park Slope",
+    timezone: "America/New_York",
     description:
       "Sports massage, prenatal, and aromatherapy. Infrared sauna add-on. HSA/FSA friendly receipts.",
     hours: SPA_HOURS,
@@ -164,6 +174,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Fulton Fade Lab",
     type: "barbershop",
     location: "Brooklyn, NY — Fort Greene",
+    timezone: "America/New_York",
     description:
       "Fades, tapers, beard sculpting, and hot-towel shaves. Book by barber name online.",
     hours: BARBER_HOURS,
@@ -177,6 +188,7 @@ const SEED_BUSINESSES: SeedBusiness[] = [
     name: "Mission Cut Co.",
     type: "barbershop",
     location: "San Francisco, CA — Mission District",
+    timezone: "America/Los_Angeles",
     description:
       "Classic barbershop cuts for all hair textures. Walk-ins welcome weekday lunch.",
     hours: BARBER_HOURS,
@@ -226,6 +238,7 @@ async function main() {
       name: def.name,
       type: def.type,
       location: def.location,
+      timezone: def.timezone,
       description: def.description,
       contactInfo: contact(def.slug),
       hours: def.hours,

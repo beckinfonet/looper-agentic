@@ -123,7 +123,7 @@ export function buildTools(ctx: { getUserId: () => string | undefined }) {
     new DynamicStructuredTool({
       name: "getBusinessDetails",
       description:
-        "Fetch one business by id: hours, description, location, contactInfo. Use when the user asks for opening hours or full venue details.",
+        "Fetch one business by id: hours, description, location, contactInfo, IANA timezone, staffChoice (required|optional|none for picking a specialist). Use for hours, venue detail, or how staff selection works.",
       schema: z.object({
         businessId: z.string().describe("Business id from searchBusinesses"),
       }),

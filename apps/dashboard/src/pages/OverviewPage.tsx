@@ -7,6 +7,9 @@ export default function OverviewPage() {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [contactInfo, setContactInfo] = useState("");
+  const [description, setDescription] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [staffChoice, setStaffChoice] = useState<"required" | "optional" | "none">("optional");
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -17,6 +20,9 @@ export default function OverviewPage() {
         setName(b.name);
         setLocation(b.location);
         setContactInfo(b.contactInfo);
+        setDescription(b.description ?? "");
+        setTimezone(b.timezone ?? "");
+        setStaffChoice(b.staffChoice ?? "optional");
       })
       .catch((e) => setErr((e as Error).message));
   }, []);
@@ -26,7 +32,14 @@ export default function OverviewPage() {
     setErr(null);
     setSaved(false);
     try {
-      await api.patchBusiness({ name, location, contactInfo });
+      await api.patchBusiness({
+        name,
+        location,
+        contactInfo,
+        description,
+        timezone: timezone.trim() || undefined,
+        staffChoice,
+      });
       setSaved(true);
     } catch (e) {
       setErr((e as Error).message);
@@ -44,6 +57,28 @@ export default function OverviewPage() {
           <input value={location} onChange={(e) => setLocation(e.target.value)} required />
           <label>Contact</label>
           <input value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} />
+          <label>IANA time zone</label>
+          <input
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            placeholder="America/New_York"
+          />
+          <label>Customer staff selection</label>
+          <select
+            value={staffChoice}
+            onChange={(e) => setStaffChoice(e.target.value as typeof staffChoice)}
+          >
+            <option value="optional">Optional — customer may pick a specialist</option>
+            <option value="required">Required — customer must pick</option>
+            <option value="none">None — any available staff</option>
+          </select>
+          <label>Description (search + bot)</label>
+          <textarea
+            rows={5}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What you offer, policies, vibe…"
+          />
           {err && <p className="error">{err}</p>}
           {saved && <p>Saved.</p>}
           <button type="submit">Save</button>

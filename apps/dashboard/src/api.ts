@@ -43,6 +43,9 @@ export const api = {
     businessName: string;
     type: "restaurant" | "spa" | "barbershop";
     location: string;
+    timezone: string;
+    description?: string;
+    staffChoice?: "required" | "optional" | "none";
   }) =>
     req<{ token: string; business: { id: string; name: string } }>("/v1/business-auth/register", {
       method: "POST",
@@ -55,8 +58,11 @@ export const api = {
       name: string;
       type: string;
       location: string;
+      description: string;
       contactInfo: string;
       hours: { dayOfWeek: number; open: string; close: string }[];
+      timezone: string;
+      staffChoice: "required" | "optional" | "none";
     }>("/v1/business/me"),
   patchBusiness: (patch: Record<string, unknown>) =>
     req<unknown>("/v1/business/me", { method: "PATCH", body: JSON.stringify(patch) }),
